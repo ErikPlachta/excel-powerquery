@@ -1,0 +1,297 @@
+{
+  "title": "Power Query File Definitions",
+  "name": "PowerQueryDataDrivenConfig",
+  "description": "This configuration defines the data processing logic for Power Query files with settings, parameters, and actions defined remotely.",
+  "Settings": {
+    "Models": [
+      {
+        "name": "SQLServer",
+        "connectionString": "Server=myServer;Database=myDB;Trusted_Connection=True;"
+      },
+      {
+        "name": "PowerBIModel",
+        "connectionString": "Data Source=myPowerBI;Catalog=myCatalog"
+      }
+    ],
+    "Defaults": {
+      "retryAttempts": 3,
+      "retryWaitTimeSeconds": 5,
+      "failoverBehavior": "logAndContinue",
+      "localCachePath": "[WorkbookPath]",
+      "useLocalCache": false,
+      "logPath": "https://example.com/error_log.txt"
+    },
+    "Caching": {
+      "enableCache": true,
+      "cachePath": "[WorkbookPath]/cache/"
+    }
+  },
+  "Parameters": {
+    "connectionStrings": {
+      "SQLServer": "Server=myServer;Database=myDB;Trusted_Connection=True;",
+      "PowerBIModel": "Data Source=myPowerBI;Catalog=myCatalog"
+    },
+    "namedRanges": {
+      "SalesDataRange": "A1:D100",
+      "FinancialDataRange": "A1:B50"
+    },
+    "placeholders": {
+      "StartDate": "2024-01-01",
+      "EndDate": "2024-12-31"
+    }
+  },
+  "PowerQuery": {
+    "Main": "https://example.com/main_script.txt",
+    "Functions": [
+      {
+        "name": "getRemoteContent",
+        "path": "https://example.com/getRemoteContent.pq",
+        "description": "Fetches content from a remote URL.",
+        "parameters": [
+          "url", "retryAttempts", "waitTimeSeconds", "failoverBehavior", "logPath"
+        ]
+      },
+      {
+        "name": "getLocalFile",
+        "path": "https://example.com/getLocalFile.pq",
+        "description": "Fetches content from a local file path.",
+        "parameters": [
+          "filePath", "retryAttempts", "waitTimeSeconds", "failoverBehavior", "logPath", "useLocalCache", "remoteContentFunction"
+        ]
+      },
+      {
+        "name": "processJson",
+        "path": "https://example.com/processJson.pq",
+        "description": "Processes and transforms JSON data.",
+        "parameters": [
+          "jsonContent", "retryAttempts", "waitTimeSeconds", "failoverBehavior", "logPath"
+        ]
+      },
+      {
+        "name": "processCsv",
+        "path": "https://example.com/processCsv.pq",
+        "description": "Processes and transforms CSV data.",
+        "parameters": [
+          "csvContent", "delimiter", "retryAttempts", "waitTimeSeconds", "failoverBehavior", "logPath"
+        ]
+      },
+      {
+        "name": "executeDax",
+        "path": "https://example.com/executeDax.pq",
+        "description": "Executes DAX queries against a connection.",
+        "parameters": [
+          "connection", "daxQuery", "retryAttempts", "waitTimeSeconds", "failoverBehavior", "logPath"
+        ]
+      },
+      {
+        "name": "executeSql",
+        "path": "https://example.com/executeSql.pq",
+        "description": "Executes SQL queries against a connection.",
+        "parameters": [
+          "connection", "sqlQuery", "retryAttempts", "waitTimeSeconds", "failoverBehavior", "logPath"
+        ]
+      },
+      {
+        "name": "extractZip",
+        "path": "https://example.com/extractZip.pq",
+        "description": "Extracts a zip file and processes its contents.",
+        "parameters": [
+          "zipFileContent", "extractPath", "retryAttempts", "waitTimeSeconds", "failoverBehavior", "logPath"
+        ]
+      }
+    ]
+  },
+  "Files": {
+    "title": "File Processing Definitions",
+    "name": "FileProcessor",
+    "description": "Contains definitions for how each file should be processed.",
+    "files": [
+      {
+        "title": "Sales Data CSV",
+        "name": "SalesDataFile",
+        "description": "A CSV file containing sales data for analysis.",
+        "type": "CSV",
+        "isEnabled": true,
+        "path": "https://example.com/sales_data.csv",
+        "localCachePath": "[WorkbookPath]/sales_data.csv",
+        "useLocalCache": false,
+        "convertToTable": true,
+        "actions": [
+          {
+            "step": 1,
+            "function": "getRemoteContent",
+            "parameters": {
+              "url": "https://example.com/sales_data.csv",
+              "retryAttempts": 5,
+              "waitTimeSeconds": 2,
+              "failoverBehavior": "skipToNextStep",
+              "logPath": "https://example.com/error_log.txt"
+            },
+            "subActions": [
+              {
+                "step": 1.1,
+                "function": "validateFileType",
+                "parameters": {
+                  "fileType": "CSV",
+                  "expectedType": "CSV"
+                }
+              },
+              {
+                "step": 1.2,
+                "function": "processCsv",
+                "parameters": {
+                  "csvContent": "{csvContent}",
+                  "delimiter": ",",
+                  "retryAttempts": 5,
+                  "waitTimeSeconds": 2,
+                  "failoverBehavior": "logAndContinue",
+                  "logPath": "https://example.com/error_log.txt"
+                }
+              },
+              {
+                "step": 1.3,
+                "function": "recordSuccessOrFail",
+                "parameters": {
+                  "result": "Success",
+                  "stepName": "SalesDataFile",
+                  "logPath": "https://example.com/error_log.txt"
+                }
+              }
+            ]
+          },
+          {
+            "step": 2,
+            "function": "convertToTable",
+            "parameters": {
+              "fileContent": "{processedCsvContent}",
+              "tableName": "SalesDataTable",
+              "retryAttempts": 3,
+              "waitTimeSeconds": 2,
+              "failoverBehavior": "logAndContinue",
+              "logPath": "https://example.com/error_log.txt"
+            },
+            "dependsOn": "step 1.2"
+          }
+        ],
+        "errorHandling": {
+          "onError": "logError",
+          "logPath": "https://example.com/error_log.txt"
+        }
+      },
+      {
+        "title": "Sales Data Zip",
+        "name": "SalesDataZipFile",
+        "description": "A zip file containing sales data CSV files.",
+        "type": "ZIP",
+        "isEnabled": true,
+        "path": "https://example.com/sales_data.zip",
+        "localCachePath": "[WorkbookPath]/sales_data.zip",
+        "useLocalCache": false,
+        "convertToTable": true,
+        "actions": [
+          {
+            "step": 1,
+            "function": "getRemoteContent",
+            "parameters": {
+              "url": "https://example.com/sales_data.zip",
+              "retryAttempts": 5,
+              "waitTimeSeconds": 2,
+              "failoverBehavior": "skipToNextStep",
+              "logPath": "https://example.com/error_log.txt"
+            }
+          },
+          {
+            "step": 2,
+            "function": "extractZip",
+            "parameters": {
+              "zipFileContent": "{zipContent}",
+              "extractPath": "[WorkbookPath]/extracted/",
+              "retryAttempts": 3,
+              "waitTimeSeconds": 2,
+              "failoverBehavior": "logAndContinue",
+              "logPath": "https://example.com/error_log.txt"
+            }
+          },
+          {
+            "step": 3,
+            "function": "processExtractedFiles",
+            "parameters": {
+              "extractedFiles": "{extractedFiles}",
+              "subActions": [
+                {
+                  "step": 3.1,
+                  "function": "processCsv",
+                  "parameters": {
+                    "csvContent": "{csvFile}",
+                    "delimiter": ",",
+                    "retryAttempts": 3,
+                    "waitTimeSeconds": 2,
+                    "failoverBehavior": "logAndContinue",
+                    "logPath": "https://example.com/error_log.txt"
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "title": "Financial Data SQL",
+        "name": "FinancialDataFile",
+        "description": "An SQL script to retrieve financial data from the database.",
+        "type": "SQL",
+        "isEnabled": true,
+        "path": "https://example.com/financial_query.sql",
+        "localCachePath": "[WorkbookPath]/financial_query.sql",
+        "useLocalCache": true,
+        "convertToTable": false,
+        "actions": [
+          {
+            "step": 1,
+            "function": "getLocalFile",
+            "parameters": {
+              "filePath": "[WorkbookPath]/financial_query.sql",
+              "retryAttempts": 5,
+              "waitTimeSeconds": 2,
+              "failoverBehavior": "
+
+skipToNextStep",
+              "logPath": "https://example.com/error_log.txt",
+              "useLocalCache": true,
+              "remoteContentFunction": "getRemoteContent"
+            }
+          },
+          {
+            "step": 2,
+            "function": "findAndReplaceParameters",
+            "parameters": {
+              "fileContent": "{sqlContent}",
+              "parameters": [
+                {
+                  "placeholder": "@StartDate",
+                  "value": "2024-01-01"
+                }
+              ]
+            }
+          },
+          {
+            "step": 3,
+            "function": "executeSql",
+            "parameters": {
+              "connection": "SQLServer",
+              "sqlQuery": "{sqlQuery}",
+              "retryAttempts": 5,
+              "waitTimeSeconds": 2,
+              "failoverBehavior": "logAndContinue",
+              "logPath": "https://example.com/error_log.txt"
+            }
+          }
+        ],
+        "errorHandling": {
+          "onError": "logError",
+          "logPath": "https://example.com/error_log.txt"
+        }
+      }
+    ]
+  }
+}
