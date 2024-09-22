@@ -1,0 +1,181 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PowerQueryConfigSchema",
+  "type": "object",
+  "properties": {
+    "title": { "type": "string" },
+    "name": { "type": "string" },
+    "description": { "type": "string" },
+    "Settings": {
+      "type": "object",
+      "properties": {
+        "Models": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string" },
+              "connectionString": { "type": "string" }
+            },
+            "required": ["name", "connectionString"]
+          }
+        },
+        "Defaults": {
+          "type": "object",
+          "properties": {
+            "retryAttempts": { "type": "integer", "minimum": 0 },
+            "retryWaitTimeSeconds": { "type": "integer", "minimum": 0 },
+            "failoverBehavior": { "type": "string" },
+            "localCachePath": { "type": "string" },
+            "useLocalCache": { "type": "boolean" },
+            "logPath": { "type": "string", "format": "uri" }
+          },
+          "required": [
+            "retryAttempts",
+            "retryWaitTimeSeconds",
+            "failoverBehavior",
+            "localCachePath",
+            "useLocalCache",
+            "logPath"
+          ]
+        },
+        "Caching": {
+          "type": "object",
+          "properties": {
+            "enableCache": { "type": "boolean" },
+            "cachePath": { "type": "string" }
+          },
+          "required": ["enableCache", "cachePath"]
+        }
+      }
+    },
+    "Parameters": {
+      "type": "object",
+      "properties": {
+        "connectionStrings": {
+          "type": "object",
+          "properties": {
+            "SQLServer": { "type": "string" },
+            "PowerBIModel": { "type": "string" }
+          },
+          "required": ["SQLServer", "PowerBIModel"]
+        },
+        "namedRanges": {
+          "type": "object",
+          "properties": {
+            "SalesDataRange": { "type": "string" },
+            "FinancialDataRange": { "type": "string" }
+          }
+        },
+        "placeholders": {
+          "type": "object",
+          "properties": {
+            "StartDate": { "type": "string", "format": "date" },
+            "EndDate": { "type": "string", "format": "date" }
+          }
+        }
+      }
+    },
+    "PowerQuery": {
+      "type": "object",
+      "properties": {
+        "Main": { "type": "string", "format": "uri" },
+        "Functions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string" },
+              "path": { "type": "string", "format": "uri" },
+              "description": { "type": "string" },
+              "parameters": {
+                "type": "array",
+                "items": { "type": "string" }
+              }
+            },
+            "required": ["name", "path", "description", "parameters"]
+          }
+        }
+      }
+    },
+    "Files": {
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "files": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "title": { "type": "string" },
+              "name": { "type": "string" },
+              "description": { "type": "string" },
+              "type": { "type": "string", "enum": ["CSV", "ZIP", "SQL"] },
+              "isEnabled": { "type": "boolean" },
+              "path": { "type": "string", "format": "uri" },
+              "localCachePath": { "type": "string" },
+              "useLocalCache": { "type": "boolean" },
+              "convertToTable": { "type": "boolean" },
+              "actions": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "step": { "type": "number" },
+                    "function": { "type": "string" },
+                    "parameters": {
+                      "type": "object",
+                      "properties": {},
+                      "additionalProperties": true
+                    },
+                    "subActions": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "step": { "type": "number" },
+                          "function": { "type": "string" },
+                          "parameters": {
+                            "type": "object",
+                            "properties": {},
+                            "additionalProperties": true
+                          }
+                        }
+                      }
+                    },
+                    "dependsOn": { "type": "string" }
+                  },
+                  "required": ["step", "function", "parameters"]
+                }
+              },
+              "errorHandling": {
+                "type": "object",
+                "properties": {
+                  "onError": { "type": "string" },
+                  "logPath": { "type": "string", "format": "uri" }
+                },
+                "required": ["onError", "logPath"]
+              }
+            },
+            "required": [
+              "title",
+              "name",
+              "description",
+              "type",
+              "isEnabled",
+              "path",
+              "localCachePath",
+              "useLocalCache",
+              "convertToTable",
+              "actions",
+              "errorHandling"
+            ]
+          }
+        }
+      }
+    }
+  },
+  "required": ["title", "name", "description", "Settings", "Parameters", "PowerQuery", "Files"]
+}

@@ -216,22 +216,22 @@
             "step": 3,
             "function": "processExtractedFiles",
             "parameters": {
-              "extractedFiles": "{extractedFiles}",
-              "subActions": [
-                {
-                  "step": 3.1,
-                  "function": "processCsv",
-                  "parameters": {
-                    "csvContent": "{csvFile}",
-                    "delimiter": ",",
-                    "retryAttempts": 3,
-                    "waitTimeSeconds": 2,
-                    "failoverBehavior": "logAndContinue",
-                    "logPath": "https://example.com/error_log.txt"
-                  }
+              "extractedFiles": "{extractedFiles}"
+            },
+            "subActions": [
+              {
+                "step": 3.1,
+                "function": "processCsv",
+                "parameters": {
+                  "csvContent": "{csvFile}",
+                  "delimiter": ",",
+                  "retryAttempts": 3,
+                  "waitTimeSeconds": 2,
+                  "failoverBehavior": "logAndContinue",
+                  "logPath": "https://example.com/error_log.txt"
                 }
-              ]
-            }
+              }
+            ]
           }
         ]
       },
@@ -253,9 +253,7 @@
               "filePath": "[WorkbookPath]/financial_query.sql",
               "retryAttempts": 5,
               "waitTimeSeconds": 2,
-              "failoverBehavior": "
-
-skipToNextStep",
+              "failoverBehavior": "skipToNextStep",
               "logPath": "https://example.com/error_log.txt",
               "useLocalCache": true,
               "remoteContentFunction": "getRemoteContent"
