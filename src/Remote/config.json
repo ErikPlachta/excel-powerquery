@@ -101,11 +101,11 @@
       }
     ]
   },
-  "Files": {
+  "Queries": {
     "title": "File Processing Definitions",
     "name": "FileProcessor",
     "description": "Contains definitions for how each file should be processed.",
-    "files": [
+    "Files": [
       {
         "title": "Sales Data CSV",
         "name": "SalesDataFile",
@@ -116,7 +116,7 @@
         "localCachePath": "[WorkbookPath]/sales_data.csv",
         "useLocalCache": false,
         "convertToTable": true,
-        "actions": [
+        "Actions": [
           {
             "step": 1,
             "function": "getRemoteContent",
