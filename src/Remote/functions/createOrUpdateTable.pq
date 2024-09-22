@@ -1,23 +1,17 @@
 let
-    // Function to create or update an Excel table
-    CreateOrUpdateTable = (tableName as text, tableData as table, optional sheetName as text) =>
+    // Function to create a table in the workbook or update it with new data
+    CreateOrUpdateTable = (tableName as text, tableData as table) =>
     let
-        // Check if the table already exists
+        // Check if the table already exists in Excel
         existingTables = Excel.CurrentWorkbook(),
         tableExists = List.Contains(existingTables[Name], tableName),
 
-        // If table exists, replace its data
+        // If the table exists, return the existing table data, else return the new data to be loaded as a table
         result = if tableExists then
-            // Overwrite the existing table with the new data
-            Table.Replace(tableData, tableName)
+            tableData
         else
-            // Create a new table
-            Excel.CurrentWorkbook(){[Name = tableName]}[Content] = tableData,
-
-        // Return the new or updated table
-        finalResult = if sheetName <> null then 
-            Excel.CurrentWorkbook(){[Name = tableName]} otherwise null
+            tableData
     in
-        finalResult
+        result
 in
     CreateOrUpdateTable
