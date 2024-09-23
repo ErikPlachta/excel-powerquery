@@ -1,0 +1,36 @@
+{
+  "title": "Power Query File Definitions",
+  "name": "PowerQueryDataDrivenConfig",
+  "settings": {
+    "models": [
+      {
+        "name": "SQLServer",
+        "connection": "Server=myServer;Database=myDB;Trusted_Connection=True;",
+        "sourceType": "sql"
+      },
+      {
+        "name": "PowerBIModel",
+        "connection": "Data Source=myPowerBI;Catalog=myCatalog",
+        "sourceType": "dax"
+      }
+    ],
+    "defaults": {
+      "retries": 3,
+      "wait": 5,
+      "failover": "logAndContinue"
+    }
+  },
+  "parameters": {
+    "SQLServerConnection": "Server=myServer;Database=myDB;Trusted_Connection=True;"
+  },
+  "queries": {
+    "sqlTest": {
+      "description": "Basic SQL test query to verify connection integrity",
+      "query": "SELECT 'test' AS TestColumn;"
+    },
+    "daxTest": {
+      "description": "Basic DAX test query to verify connection integrity",
+      "query": "EVALUATE ROW(\"TestColumn\", \"test\")"
+    }
+  }
+}
