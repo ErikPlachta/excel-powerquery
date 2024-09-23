@@ -1,3 +1,13 @@
+The error **"the import ProcessItem matches no export"** occurs because Power Query (M language) doesn't allow function definitions to be nested inside another `let` block. In the code, the `ProcessItem` function is defined inside the outer `let` block of the `ProcessJson` function. This causes the issue because Power Query doesn't recognize `ProcessItem` as a function that can be invoked.
+
+### **Solution**:
+We need to move the `ProcessItem` function outside the `ProcessJson` function so that it is globally accessible and can be called from within `ProcessJson`.
+
+Here’s the corrected version of the code where the `ProcessItem` function is moved outside the `ProcessJson` function definition:
+
+### **Corrected Code**:
+
+```m
 let
     //--------------------------------------------------------------------------
     // Centralized function to handle recursion for both records and lists
@@ -74,3 +84,17 @@ let
         Output
 in
     ProcessJson
+```
+
+### **Changes**:
+
+- **Moved `ProcessItem`**: The `ProcessItem` function is now outside the `ProcessJson` function, making it globally accessible so it can be called recursively.
+  
+### **Explanation**:
+
+1. **Global Function**: Power Query does not support nested function definitions within `let` blocks. By defining `ProcessItem` at the top level, it becomes accessible to any other function in the `let` block (including `ProcessJson`).
+2. **Recursive Functionality**: This now ensures that `ProcessItem` can be recursively called for each nested record and list.
+
+### **Testing**:
+
+This version should resolve the **"matches no export"** error. Try running the code again, and let me know if it works as expected or if any further issues arise.
