@@ -2,57 +2,60 @@ let
     //--------------------------------------------------------------------------
     // Centralized function to handle recursion for both records and lists
     ProcessItem = (
-        data as any,
-        config as list,
-        parentID as nullable number,
-        currentID as number,
+        data as any, 
+        parentID as nullable number, 
+        currentID as number, 
         groupID as number
     ) =>
     let
-        // Check if the data is null, if so, return an empty list (no processing)
+        // Initialize empty list to hold processed rows
         Result = if data = null then
             {}
-        else
+        else if Value.Is(data, type record) then
+            // If data is a record, process its fields
             let
-                // If the data is a record, get the field names, otherwise, return an empty list
-                FieldNames = if Value.Is(data, type record) then Record.FieldNames(data) else {},
-
-                // Extract values based on the config or directly process fields
-                ProcessedFields = List.Transform(FieldNames, (field) =>
+                FieldNames = Record.FieldNames(data),
+                ProcessedFields = List.Accumulate(FieldNames, {}, (accum, field) =>
                     let
                         FieldValue = Record.Field(data, field),
                         Row = if Value.Is(FieldValue, type record) then
-                            // Recursively process nested records
-                            ProcessItem(FieldValue, config, currentID, currentID + 1, groupID + 1)
+                            // If it's a nested record, recursively process it
+                            ProcessItem(FieldValue, currentID, currentID + 1, groupID + 1)
                         else if Value.Is(FieldValue, type list) then
-                            // Handle lists separately, passing each item recursively
-                            List.Accumulate(FieldValue, {}, (accum, item) =>
-                                List.Combine({accum, ProcessItem(item, config, currentID, currentID + 1, groupID + 1)})
+                            // If it's a list, process each item in the list
+                            List.Accumulate(FieldValue, {}, (listAccum, item) =>
+                                List.Combine({listAccum, ProcessItem(item, currentID, currentID + 1, groupID + 1)})
                             )
                         else
-                            // Process individual fields as rows
+                            // It's a simple field, so process it as a row
                             {[ID = currentID, ParentID = parentID, GroupID = groupID, Title = field, Value = FieldValue]}
                     in
-                        Row
+                        List.Combine({accum, Row})
                 ),
-
-                // Combine the rows into one table
-                FinalResult = Table.FromRecords(List.Combine(ProcessedFields))
+                FinalResult = List.Combine(ProcessedFields)
             in
                 FinalResult
+        else if Value.Is(data, type list) then
+            // If data is a list, process each item in the list
+            List.Accumulate(data, {}, (accum, item) =>
+                List.Combine({accum, ProcessItem(item, parentID, currentID + 1, groupID + 1)})
+            )
+        else
+            // If it's a simple value, return as a row
+            {[ID = currentID, ParentID = parentID, GroupID = groupID, Title = "SimpleValue", Value = data]}
     in
         Result,
 
     //--------------------------------------------------------------------------
     // Function to process the entire JSON and generate the table
-    ProcessJson = (jsonObject as record, config as list) =>
+    ProcessJson = (jsonObject as record) =>
     let
         // Initialize root level variables
         RootID = 1,
         RootGroupID = 1,
 
         // Start processing the entire JSON object from root
-        FinalTable = ProcessItem(jsonObject, config, null, RootID, RootGroupID),
+        FinalTable = Table.FromRecords(ProcessItem(jsonObject, null, RootID, RootGroupID)),
 
         // Validate that ParentID relationships are valid
         ValidateParentID = (table as table) =>
