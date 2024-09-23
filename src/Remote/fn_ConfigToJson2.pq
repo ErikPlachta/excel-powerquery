@@ -1,56 +1,84 @@
 let
     //--------------------------------------------------------------------------
-    // Function to process individual records and lists
-    ProcessItem = (data as any, parentID as nullable number, currentID as number, groupID as number) =>
+    // Function to process individual records and lists iteratively
+    ProcessItem = (jsonObject as record) =>
     let
-        ProcessedFields = if data = null then
-            // Return an empty list if data is null
-            {}
-        else if Value.Is(data, type record) then
-            // If the data is a record, get its fields and process them
-            let
-                FieldNames = Record.FieldNames(data),
-                Rows = List.Accumulate(FieldNames, {}, (accum, field) =>
+        // Initialize queue with the root JSON object
+        Queue = { [data = jsonObject, parentID = null, currentID = 1, groupID = 1] },
+        FinalRows = List.Generate(
+            () => [Queue = Queue, Processed = {}], // Initial state
+            each List.Count([Queue]) > 0, // Continue while there are items in the queue
+            each let
+                // Dequeue the first item
+                CurrentItem = List.First([Queue]),
+                RemainingQueue = List.RemoveFirstN([Queue], 1),
+                
+                // Process the current item
+                data = CurrentItem[data],
+                parentID = CurrentItem[parentID],
+                currentID = CurrentItem[currentID],
+                groupID = CurrentItem[groupID],
+
+                // Initialize processed rows for this iteration
+                ProcessedRows = if data = null then
+                    // Return empty if null
+                    {}
+                else if Value.Is(data, type record) then
+                    // If it's a record, process its fields
                     let
-                        FieldValue = Record.Field(data, field),
-                        Row = if Value.Is(FieldValue, type record) then
-                            // Recursively process the nested record
-                            ProcessItem(FieldValue, currentID, currentID + 1, groupID + 1)
-                        else if Value.Is(FieldValue, type list) then
-                            // Recursively process the list
-                            List.Accumulate(FieldValue, {}, (listAccum, item) =>
-                                List.Combine({listAccum, ProcessItem(item, currentID, currentID + 1, groupID + 1)})
-                            )
-                        else
-                            // Process the field as a simple value
-                            {[ID = currentID, ParentID = parentID, GroupID = groupID, Title = field, Value = FieldValue]}
+                        FieldNames = Record.FieldNames(data),
+                        NewRows = List.Accumulate(FieldNames, {}, (accum, field) =>
+                            let
+                                FieldValue = Record.Field(data, field),
+                                Row = if Value.Is(FieldValue, type record) then
+                                    // Add nested record to queue for later processing
+                                    [Queue = List.Combine({[Queue], { [data = FieldValue, parentID = currentID, currentID = currentID + 1, groupID = groupID + 1] }})]
+                                else if Value.Is(FieldValue, type list) then
+                                    // Add each item in the list to the queue
+                                    let
+                                        ProcessedList = List.Accumulate(FieldValue, {}, (listAccum, item) =>
+                                            if Value.Is(item, type record) then
+                                                List.Combine({listAccum, { [data = item, parentID = currentID, currentID = currentID + 1, groupID = groupID + 1] }})
+                                            else
+                                                listAccum
+                                        )
+                                    in
+                                        [Queue = List.Combine({[Queue], ProcessedList})]
+                                else
+                                    // Simple value, create a row
+                                    {[ID = currentID, ParentID = parentID, GroupID = groupID, Title = field, Value = FieldValue]}
+                            in
+                                List.Combine({accum, Row})
+                        )
                     in
-                        List.Combine({accum, Row})
-                )
+                        NewRows
+                else if Value.Is(data, type list) then
+                    // If it's a list, process each item
+                    let
+                        ProcessedList = List.Accumulate(data, {}, (accum, item) =>
+                            if Value.Is(item, type record) then
+                                List.Combine({accum, { [data = item, parentID = currentID, currentID = currentID + 1, groupID = groupID + 1] }})
+                            else
+                                accum
+                        )
+                    in
+                        [Queue = List.Combine({[Queue], ProcessedList})]
+                else
+                    // If it's a simple value
+                    {[ID = currentID, ParentID = parentID, GroupID = groupID, Title = "SimpleValue", Value = data}]
             in
-                Rows
-        else if Value.Is(data, type list) then
-            // If the data is a list, process each item in the list
-            List.Accumulate(data, {}, (accum, item) =>
-                List.Combine({accum, ProcessItem(item, parentID, currentID + 1, groupID + 1)})
-            )
-        else
-            // Process the data as a simple value
-            {[ID = currentID, ParentID = parentID, GroupID = groupID, Title = "SimpleValue", Value = data]}
+                [Queue = RemainingQueue, Processed = List.Combine({[Processed], ProcessedRows})]
+        )[Processed],
+        FinalTable = Table.FromRecords(FinalRows)
     in
-        ProcessedFields,
+        FinalTable,
 
     //--------------------------------------------------------------------------
     // Function to process the entire JSON and generate the table
     ProcessJson = (jsonObject as record) =>
     let
-        // Initialize root level variables
-        RootID = 1,
-        RootGroupID = 1,
-
-        // Start processing the entire JSON object from root
-        FinalRows = ProcessItem(jsonObject, null, RootID, RootGroupID),
-        FinalTable = Table.FromRecords(FinalRows),
+        // Process the root JSON object iteratively
+        FinalTable = ProcessItem(jsonObject),
 
         // Validate that ParentID relationships are valid
         ValidateParentID = (table as table) =>
