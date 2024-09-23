@@ -6,20 +6,24 @@ let
         Fields = Record.FieldNames(jsonObject),
         DynamicConfig = List.Accumulate(Fields, {}, (accumulatedConfig, field) =>
             let
-                fieldValue = Record.Field(jsonObject, field),
+                fieldValue = try Record.Field(jsonObject, field) otherwise 
+                    error "Error retrieving the field '" & field & "' during config generation.",
+                
                 // Build the full path (parent + current field)
                 newParentKeys = if parentKeys = null then {field} else List.Combine({parentKeys, {field}}),
+                
                 // Recursively generate config for nested records and lists
                 nestedConfig = if Value.Is(fieldValue, type record) then
-                    GenerateDynamicConfig(fieldValue, newParentKeys)
+                    try GenerateDynamicConfig(fieldValue, newParentKeys) otherwise 
+                        error "Error generating config for nested record '" & field & "' at path: " & Text.Combine(newParentKeys, "."),
                 else if Value.Is(fieldValue, type list) then
-                    List.Accumulate(fieldValue, accumulatedConfig, (listAccum, item) =>
+                    try List.Accumulate(fieldValue, accumulatedConfig, (listAccum, item) =>
                         if Value.Is(item, type record) then
                             // Recursively process list items if they are records
                             List.Combine({listAccum, GenerateDynamicConfig(item, newParentKeys)})
                         else
                             listAccum
-                    )
+                    ) otherwise error "Error processing list field '" & field & "' at path: " & Text.Combine(newParentKeys, "."),
                 else
                     {[title = Text.Combine(newParentKeys, "."), target = newParentKeys]}
             in
@@ -51,8 +55,9 @@ let
         // Extract each field based on the provided config
         Rows = List.Transform(config, (fieldConfig) =>
             let
-                fieldTitle = fieldConfig[title],
-                fieldValue = try Record.Field(data, List.First(fieldConfig[target])) otherwise null,
+                fieldTitle = try fieldConfig[title] otherwise error "Missing 'title' key in config for current item.",
+                fieldValue = try Record.Field(data, List.First(fieldConfig[target])) otherwise 
+                    error "Error retrieving value for target path '" & Text.Combine(List.First(fieldConfig[target]), ".") & "'.",
                 row = [
                     ID = newID,
                     ParentID = parentID,
@@ -67,22 +72,24 @@ let
         // Recursively process nested records and lists
         NestedRows = List.Accumulate(Record.FieldNames(data), Rows, (accumulatedRows, field) =>
             let
-                fieldValue = Record.Field(data, field),
+                fieldValue = try Record.Field(data, field) otherwise 
+                    error "Error retrieving field '" & field & "' while processing nested rows.",
+                
                 childRows = if Value.Is(fieldValue, type record) then
-                    // Recursively process nested records
-                    ExtractFields(fieldValue, config, newID, newID, newGroupID)
+                    try ExtractFields(fieldValue, config, newID, newID, newGroupID) otherwise 
+                        error "Error processing nested record for field '" & field & "'.",
                 else if Value.Is(fieldValue, type list) then
-                    // Process list items recursively
-                    List.Accumulate(fieldValue, accumulatedRows, (listAccum, item) =>
+                    try List.Accumulate(fieldValue, accumulatedRows, (listAccum, item) =>
                         if Value.Is(item, type record) then
                             List.Combine({listAccum, ExtractFields(item, config, newID, newID, newGroupID)})
                         else
-                            listAccum
-                    )
+                            // Add list items as separate rows
+                            List.Combine({listAccum, {[ID = newID, ParentID = parentID, GroupID = newGroupID, Title = field, Value = item]}})
+                    ) otherwise error "Error processing list items for field '" & field & "'.",
                 else
                     accumulatedRows
             in
-                Table.Combine({accumulatedRows, childRows})
+                Table.FromRecords(accumulatedRows)
         )
     in
         Table.FromRecords(NestedRows),
@@ -91,16 +98,18 @@ let
     ProcessJson = (jsonObject as record, optional config as nullable list) =>
     let
         // If no config is passed, dynamically generate it by traversing the JSON
-        configToUse = if config = null then
+        configToUse = try if config = null then
             GenerateDynamicConfig(jsonObject, null)
         else
-            config,
+            config otherwise error "Error generating or using config.",
 
         // Process the main JSON object using the extracted config
-        FinalTable = ExtractFields(jsonObject, configToUse),
+        FinalTable = try ExtractFields(jsonObject, configToUse) otherwise 
+            error "Error extracting fields from JSON object.",
 
         // Validate the ParentID assignments to catch any orphan rows
-        ValidationResult = ValidateParentID(FinalTable)
+        ValidationResult = try ValidateParentID(FinalTable) otherwise 
+            error "Error during ParentID validation."
     in
         if ValidationResult = "ParentID validation passed" then
             FinalTable
