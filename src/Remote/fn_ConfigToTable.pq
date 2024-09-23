@@ -6,24 +6,37 @@ let
         Fields = Record.FieldNames(jsonObject),
         DynamicConfig = List.Accumulate(Fields, {}, (accumulatedConfig, field) =>
             let
-                fieldValue = try Record.Field(jsonObject, field) otherwise 
-                    error "Error retrieving the field '" & field & "' during config generation.",
-                
+                tryFieldValue = try Record.Field(jsonObject, field),
+                fieldValue = if tryFieldValue[HasError] then 
+                    error "Error retrieving the field '" & field & "': " & tryFieldValue[Error][Message] 
+                else 
+                    tryFieldValue[Value],
+
                 // Build the full path (parent + current field)
                 newParentKeys = if parentKeys = null then {field} else List.Combine({parentKeys, {field}}),
                 
                 // Recursively generate config for nested records and lists
                 nestedConfig = if Value.Is(fieldValue, type record) then
-                    try GenerateDynamicConfig(fieldValue, newParentKeys) otherwise 
-                        error "Error generating config for nested record '" & field & "' at path: " & Text.Combine(newParentKeys, "."),
-                else if Value.Is(fieldValue, type list) then
-                    try List.Accumulate(fieldValue, accumulatedConfig, (listAccum, item) =>
-                        if Value.Is(item, type record) then
-                            // Recursively process list items if they are records
-                            List.Combine({listAccum, GenerateDynamicConfig(item, newParentKeys)})
+                    let
+                        tryGenerateConfig = try GenerateDynamicConfig(fieldValue, newParentKeys)
+                    in
+                        if tryGenerateConfig[HasError] then
+                            error "Error generating config for nested record '" & field & "' at path: " & Text.Combine(newParentKeys, ".") & ": " & tryGenerateConfig[Error][Message]
                         else
-                            listAccum
-                    ) otherwise error "Error processing list field '" & field & "' at path: " & Text.Combine(newParentKeys, "."),
+                            tryGenerateConfig[Value]
+                else if Value.Is(fieldValue, type list) then
+                    let
+                        tryListAccumulate = try List.Accumulate(fieldValue, accumulatedConfig, (listAccum, item) =>
+                            if Value.Is(item, type record) then
+                                List.Combine({listAccum, GenerateDynamicConfig(item, newParentKeys)})
+                            else
+                                listAccum
+                        )
+                    in
+                        if tryListAccumulate[HasError] then
+                            error "Error processing list field '" & field & "' at path: " & Text.Combine(newParentKeys, ".") & ": " & tryListAccumulate[Error][Message]
+                        else
+                            tryListAccumulate[Value]
                 else
                     {[title = Text.Combine(newParentKeys, "."), target = newParentKeys]}
             in
@@ -55,9 +68,18 @@ let
         // Extract each field based on the provided config
         Rows = List.Transform(config, (fieldConfig) =>
             let
-                fieldTitle = try fieldConfig[title] otherwise error "Missing 'title' key in config for current item.",
-                fieldValue = try Record.Field(data, List.First(fieldConfig[target])) otherwise 
-                    error "Error retrieving value for target path '" & Text.Combine(List.First(fieldConfig[target]), ".") & "'.",
+                tryFieldTitle = try fieldConfig[title],
+                fieldTitle = if tryFieldTitle[HasError] then 
+                    error "Missing 'title' key in config for current item: " & tryFieldTitle[Error][Message]
+                else 
+                    tryFieldTitle[Value],
+                
+                tryFieldValue = try Record.Field(data, List.First(fieldConfig[target])),
+                fieldValue = if tryFieldValue[HasError] then 
+                    error "Error retrieving value for target path '" & Text.Combine(List.First(fieldConfig[target]), ".") & "': " & tryFieldValue[Error][Message]
+                else 
+                    tryFieldValue[Value],
+
                 row = [
                     ID = newID,
                     ParentID = parentID,
@@ -72,20 +94,33 @@ let
         // Recursively process nested records and lists
         NestedRows = List.Accumulate(Record.FieldNames(data), Rows, (accumulatedRows, field) =>
             let
-                fieldValue = try Record.Field(data, field) otherwise 
-                    error "Error retrieving field '" & field & "' while processing nested rows.",
-                
+                tryFieldValue = try Record.Field(data, field),
+                fieldValue = if tryFieldValue[HasError] then
+                    error "Error retrieving field '" & field & "' while processing nested rows: " & tryFieldValue[Error][Message]
+                else
+                    tryFieldValue[Value],
+
                 childRows = if Value.Is(fieldValue, type record) then
-                    try ExtractFields(fieldValue, config, newID, newID, newGroupID) otherwise 
-                        error "Error processing nested record for field '" & field & "'.",
-                else if Value.Is(fieldValue, type list) then
-                    try List.Accumulate(fieldValue, accumulatedRows, (listAccum, item) =>
-                        if Value.Is(item, type record) then
-                            List.Combine({listAccum, ExtractFields(item, config, newID, newID, newGroupID)})
+                    let
+                        tryExtractFields = try ExtractFields(fieldValue, config, newID, newID, newGroupID)
+                    in
+                        if tryExtractFields[HasError] then
+                            error "Error processing nested record for field '" & field & "': " & tryExtractFields[Error][Message]
                         else
-                            // Add list items as separate rows
-                            List.Combine({listAccum, {[ID = newID, ParentID = parentID, GroupID = newGroupID, Title = field, Value = item]}})
-                    ) otherwise error "Error processing list items for field '" & field & "'.",
+                            tryExtractFields[Value]
+                else if Value.Is(fieldValue, type list) then
+                    let
+                        tryListAccumulate = try List.Accumulate(fieldValue, accumulatedRows, (listAccum, item) =>
+                            if Value.Is(item, type record) then
+                                List.Combine({listAccum, ExtractFields(item, config, newID, newID, newGroupID)})
+                            else
+                                List.Combine({listAccum, {[ID = newID, ParentID = parentID, GroupID = newGroupID, Title = field, Value = item]}})
+                        )
+                    in
+                        if tryListAccumulate[HasError] then
+                            error "Error processing list items for field '" & field & "': " & tryListAccumulate[Error][Message]
+                        else
+                            tryListAccumulate[Value]
                 else
                     accumulatedRows
             in
@@ -98,18 +133,29 @@ let
     ProcessJson = (jsonObject as record, optional config as nullable list) =>
     let
         // If no config is passed, dynamically generate it by traversing the JSON
-        configToUse = try if config = null then
+        tryConfigToUse = try if config = null then
             GenerateDynamicConfig(jsonObject, null)
         else
-            config otherwise error "Error generating or using config.",
+            config,
+        
+        configToUse = if tryConfigToUse[HasError] then
+            error "Error generating or using config: " & tryConfigToUse[Error][Message]
+        else
+            tryConfigToUse[Value],
 
         // Process the main JSON object using the extracted config
-        FinalTable = try ExtractFields(jsonObject, configToUse) otherwise 
-            error "Error extracting fields from JSON object.",
+        tryFinalTable = try ExtractFields(jsonObject, configToUse),
+        FinalTable = if tryFinalTable[HasError] then
+            error "Error extracting fields from JSON object: " & tryFinalTable[Error][Message]
+        else
+            tryFinalTable[Value],
 
         // Validate the ParentID assignments to catch any orphan rows
-        ValidationResult = try ValidateParentID(FinalTable) otherwise 
-            error "Error during ParentID validation."
+        tryValidationResult = try ValidateParentID(FinalTable),
+        ValidationResult = if tryValidationResult[HasError] then
+            error "Error during ParentID validation: " & tryValidationResult[Error][Message]
+        else
+            tryValidationResult[Value]
     in
         if ValidationResult = "ParentID validation passed" then
             FinalTable
