@@ -45,7 +45,7 @@ let
             {[ID = currentID, ParentID = parentID, GroupID = groupID, Title = "SimpleValue", Value = data]}
     in
         Result,
-
+        
     //--------------------------------------------------------------------------
     // Function to process the entire JSON and generate the table
     ProcessJson = (jsonObject as record) =>
