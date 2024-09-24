@@ -1,102 +1,26 @@
 let
-    ProcessJson = (jsonObject as record) =>
-    let
-        // Function to process individual records and lists iteratively
-        ProcessItem = (jsonObject as record) =>
-        let
-            Queue = { [data = jsonObject, parentID = null, currentID = 1, groupID = 1] },
-            FinalRows = List.Generate(
-                () => [Queue = Queue, Processed = {}],
-                each List.Count([Queue]) > 0,
-                each let
-                    CurrentItem = List.First([Queue]),
-                    RemainingQueue = List.RemoveFirstN([Queue], 1),
-                    data = CurrentItem[data],
-                    parentID = CurrentItem[parentID],
-                    currentID = CurrentItem[currentID],
-                    groupID = CurrentItem[groupID],
+    // Your JSON object here
+    jsonInput = [
+        title = "Power Query File Definitions",
+        name = "PowerQueryDataDrivenConfig",
+        settings = [
+            models = [
+                title = "Models",
+                data = {
+                    [
+                        name = "SQLServer",
+                        connection = "Server=myServer;Database=myDB;"
+                    ],
+                    [
+                        name = "ExternalAPI",
+                        connection = "https://api.example.com/data"
+                    ]
+                ]
+            ]
+        ]
+    ],
 
-                    ProcessedRows = if data = null then
-                        {}
-                    else if Value.Is(data, type record) then
-                        let
-                            FieldNames = Record.FieldNames(data),
-                            NewRows = List.Accumulate(FieldNames, {}, (accum, field) =>
-                                let
-                                    FieldValue = Record.Field(data, field),
-                                    Row = if Value.Is(FieldValue, type record) then
-                                        // Add nested record to queue
-                                        [Queue = List.Combine({[Queue], { [data = FieldValue, parentID = currentID, currentID = currentID + 1, groupID = groupID + 1] }})]
-                                    else if Value.Is(FieldValue, type list) then
-                                        // Process lists and add each item to the queue
-                                        let
-                                            ProcessedList = List.Accumulate(FieldValue, {}, (listAccum, item) =>
-                                                if Value.Is(item, type record) then
-                                                    List.Combine({listAccum, { [data = item, parentID = currentID, currentID = currentID + 1, groupID = groupID + 1] }})
-                                                else
-                                                    // Handle non-record items in a list
-                                                    List.Combine({listAccum, { [ID = currentID, ParentID = parentID, GroupID = groupID, Title = "ListItem", Value = item] }})
-                                            )
-                                        in
-                                            [Queue = List.Combine({[Queue], ProcessedList})]
-                                    else
-                                        // Create a row for simple values
-                                        {[ID = currentID, ParentID = parentID, GroupID = groupID, Title = field, Value = FieldValue]}
-                                in
-                                    List.Combine({accum, Row})
-                            )
-                        in
-                            NewRows
-                    else if Value.Is(data, type list) then
-                        // Process lists of records and non-records
-                        let
-                            ProcessedList = List.Accumulate(data, {}, (accum, item) =>
-                                if Value.Is(item, type record) then
-                                    List.Combine({accum, { [data = item, parentID = currentID, currentID = currentID + 1, groupID = groupID + 1] }})
-                                else
-                                    // Handle non-record items in a list
-                                    List.Combine({accum, { [ID = currentID, ParentID = parentID, GroupID = groupID, Title = "ListItem", Value = item] }})
-                            )
-                        in
-                            [Queue = List.Combine({[Queue], ProcessedList})]
-                    else
-                        // Handle simple values dynamically
-                        let
-                            // Create a row with defaults if fields are missing
-                            DynamicRow = [
-                                ID = if Record.HasFields(CurrentItem, "currentID") then currentID else null,
-                                ParentID = if Record.HasFields(CurrentItem, "parentID") then parentID else null,
-                                GroupID = if Record.HasFields(CurrentItem, "groupID") then groupID else null,
-                                Title = "SimpleValue",
-                                Value = data
-                            ]
-                        in
-                            {DynamicRow}
-                in
-                    [Queue = RemainingQueue, Processed = List.Combine({[Processed], ProcessedRows})]
-            )[Processed],
-
-            FinalTable = Table.FromRecords(FinalRows)
-        in
-            FinalTable,
-
-        // Validate ParentID relationships in the table
-        ValidateParentID = (table as table) =>
-        let
-            OrphanRows = Table.SelectRows(table, each [ParentID] <> null and Table.IsEmpty(Table.SelectRows(table, each [ID] = [ParentID]))),
-            ValidationResult = if Table.IsEmpty(OrphanRows) then "ParentID validation passed" else "Orphan Rows Found"
-        in
-            ValidationResult,
-
-        // Generate the final table
-        FinalTable = ProcessItem(jsonObject),
-
-        // Perform validation
-        ValidationMessage = ValidateParentID(FinalTable),
-
-        // Return the result if validation passes
-        Output = if ValidationMessage = "ParentID validation passed" then FinalTable else error ValidationMessage
-    in
-        Output
+    // Call the ProcessItem function to process the JSON input
+    OutputTable = ProcessItem(jsonInput)
 in
-    ProcessJson
+    OutputTable
