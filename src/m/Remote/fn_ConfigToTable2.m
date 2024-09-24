@@ -34,7 +34,8 @@ let
                                                 if Value.Is(item, type record) then
                                                     List.Combine({listAccum, { [data = item, parentID = currentID, currentID = currentID + 1, groupID = groupID + 1] }})
                                                 else
-                                                    listAccum
+                                                    // Handle non-record items in a list
+                                                    List.Combine({listAccum, { [ID = currentID, ParentID = parentID, GroupID = groupID, Title = "ListItem", Value = item] }})
                                             )
                                         in
                                             [Queue = List.Combine({[Queue], ProcessedList})]
@@ -47,13 +48,14 @@ let
                         in
                             NewRows
                     else if Value.Is(data, type list) then
-                        // Process lists of records
+                        // Process lists of records and non-records
                         let
                             ProcessedList = List.Accumulate(data, {}, (accum, item) =>
                                 if Value.Is(item, type record) then
                                     List.Combine({accum, { [data = item, parentID = currentID, currentID = currentID + 1, groupID = groupID + 1] }})
                                 else
-                                    accum
+                                    // Handle non-record items in a list
+                                    List.Combine({accum, { [ID = currentID, ParentID = parentID, GroupID = groupID, Title = "ListItem", Value = item] }})
                             )
                         in
                             [Queue = List.Combine({[Queue], ProcessedList})]
