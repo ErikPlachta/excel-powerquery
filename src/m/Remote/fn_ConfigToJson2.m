@@ -1,5 +1,4 @@
 let
-    // Main function to process the JSON passed directly as input
     ProcessJson = (jsonObject as record) =>
     let
         // Function to process individual records and lists iteratively
@@ -16,6 +15,7 @@ let
                     parentID = CurrentItem[parentID],
                     currentID = CurrentItem[currentID],
                     groupID = CurrentItem[groupID],
+
                     ProcessedRows = if data = null then
                         {}
                     else if Value.Is(data, type record) then
@@ -25,8 +25,10 @@ let
                                 let
                                     FieldValue = Record.Field(data, field),
                                     Row = if Value.Is(FieldValue, type record) then
+                                        // Add nested record to queue
                                         [Queue = List.Combine({[Queue], { [data = FieldValue, parentID = currentID, currentID = currentID + 1, groupID = groupID + 1] }})]
                                     else if Value.Is(FieldValue, type list) then
+                                        // Process lists and add each item to the queue
                                         let
                                             ProcessedList = List.Accumulate(FieldValue, {}, (listAccum, item) =>
                                                 if Value.Is(item, type record) then
@@ -37,6 +39,7 @@ let
                                         in
                                             [Queue = List.Combine({[Queue], ProcessedList})]
                                     else
+                                        // Create a row for simple values
                                         {[ID = currentID, ParentID = parentID, GroupID = groupID, Title = field, Value = FieldValue]}
                                 in
                                     List.Combine({accum, Row})
@@ -44,6 +47,7 @@ let
                         in
                             NewRows
                     else if Value.Is(data, type list) then
+                        // Process lists of records
                         let
                             ProcessedList = List.Accumulate(data, {}, (accum, item) =>
                                 if Value.Is(item, type record) then
@@ -54,10 +58,22 @@ let
                         in
                             [Queue = List.Combine({[Queue], ProcessedList})]
                     else
-                        {[ID = currentID, ParentID = parentID, GroupID = groupID, Title = "SimpleValue", Value = data}]
+                        // Handle simple values dynamically
+                        let
+                            // Create a row with defaults if fields are missing
+                            DynamicRow = [
+                                ID = if Record.HasFields(CurrentItem, "currentID") then currentID else null,
+                                ParentID = if Record.HasFields(CurrentItem, "parentID") then parentID else null,
+                                GroupID = if Record.HasFields(CurrentItem, "groupID") then groupID else null,
+                                Title = "SimpleValue",
+                                Value = data
+                            ]
+                        in
+                            {DynamicRow}
                 in
                     [Queue = RemainingQueue, Processed = List.Combine({[Processed], ProcessedRows})]
             )[Processed],
+
             FinalTable = Table.FromRecords(FinalRows)
         in
             FinalTable,
