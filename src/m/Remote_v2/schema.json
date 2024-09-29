@@ -1,0 +1,101 @@
+{
+    "type": "object",
+    "properties": {
+        "Parameters": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "Title": {
+                        "type": "string",
+                        "description": "The name of the parameter."
+                    },
+                    "Description": {
+                        "type": "string",
+                        "description": "A detailed description of the parameter."
+                    },
+                    "Type": {
+                        "type": "string",
+                        "description": "The data type of the parameter. Supported types are 'choice', 'checkbox', 'date', 'number', 'text', 'logical', 'integer'.",
+                        "enum": ["choice", "checkbox", "date", "number", "text", "logical", "integer"]
+                    },
+                    "Default": {
+                        "description": "The default value of the parameter. The type of this field should match the Type field."
+                    },
+                    "Options": {
+                        "type": ["array", "null"],
+                        "description": "An array of possible options for the 'choice' parameter type.",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "Required": {
+                        "type": "boolean",
+                        "description": "Indicates whether the parameter is required."
+                    },
+                    "FieldCaption": {
+                        "type": "string",
+                        "description": "A user-friendly name or label for the parameter."
+                    },
+                    "FieldDescription": {
+                        "type": "string",
+                        "description": "A more detailed description of what the parameter does."
+                    },
+                    "SampleValues": {
+                        "type": "array",
+                        "description": "A list of sample values that illustrate possible inputs for the parameter.",
+                        "items": {}
+                    },
+                    "AllowedValues": {
+                        "type": ["array", "null"],
+                        "description": "An array of allowed values, used for restricted options (e.g., choice, checkbox, logical).",
+                        "items": {}
+                    },
+                    "Examples": {
+                        "type": "array",
+                        "description": "Practical examples of using this parameter.",
+                        "items": {}
+                    }
+                },
+                "required": ["Title", "Type", "Required"]
+            }
+        },
+        "FunctionMetadata": {
+            "type": "object",
+            "properties": {
+                "Documentation.Name": {
+                    "type": "string",
+                    "description": "A short name for the function."
+                },
+                "Documentation.LongDescription": {
+                    "type": "string",
+                    "description": "A detailed description of what the function does."
+                },
+                "Documentation.Examples": {
+                    "type": "array",
+                    "description": "A list of usage examples showing how the function can be invoked.",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "Description": {
+                                "type": "string",
+                                "description": "A description of the example."
+                            },
+                            "Code": {
+                                "type": "string",
+                                "description": "The code used to invoke the function."
+                            },
+                            "Result": {
+                                "type": "string",
+                                "description": "The expected result of running the code."
+                            }
+                        },
+                        "required": ["Description", "Code", "Result"]
+                    }
+                }
+            },
+            "required": ["Documentation.Name", "Documentation.LongDescription", "Documentation.Examples"]
+        }
+    },
+    "required": ["Parameters", "FunctionMetadata"]
+}
