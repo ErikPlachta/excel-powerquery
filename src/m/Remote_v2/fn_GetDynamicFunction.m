@@ -21,8 +21,8 @@ let
     ,GenerateParameterMeta = (param as record) =>
         let
             Title = param[Title]
-            ,TypeType = param[Type] // The text Value
-            ,Type = MapParamType(param[Type]) // the actual Type
+            ,TypeType = param[Type] // The text value
+            ,Type = MapParamType(param[Type]) // The actual Type
             // Use try...otherwise for optional fields and handle missing cases gracefully
             ,FieldCaption = try param[FieldCaption] otherwise "No Caption"
             ,FieldDescription = try param[FieldDescription] otherwise "No Description"
@@ -69,11 +69,11 @@ let
     ,ParameterNames = List.Transform(ParametersMeta, each _[Name])
     ,ParameterTypes = List.Transform(ParametersMeta, each _[Type])
 
-    // Ensuring the parameter names and types are zipped together as a record
+    // Create a record of parameter names and types
     ,ParameterSignature = Record.FromList(ParameterTypes, ParameterNames)
 
-    // Ensure RequiredCount is calculated as the count of parameters
-    ,DynamicFunctionType = Type.ForFunction(ParameterSignature, type text) // type text as return type
+    // Create the function type dynamically
+    ,DynamicFunctionType = Type.ForFunction(ParameterSignature, type text)
 
     // Define the final function with dynamic parameter definitions
     ,DynamicReportFunction = (paramValues as record) => DynamicFunctionImpl(paramValues)
