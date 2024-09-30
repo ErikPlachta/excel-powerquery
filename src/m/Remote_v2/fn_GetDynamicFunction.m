@@ -65,17 +65,16 @@ let
         in
             ConcatenatedParams
 
-    // Build the function type dynamically
-    ,DynamicFunctionType = type function (
-        // Manually construct the parameter signature using List.Transform to get a list of paramName as paramType
-        List.Transform(ParametersMeta, (paramMeta) =>
-            let
-                paramName = paramMeta[Name]
-                ,paramType = paramMeta[Type]
-            in
-                paramName & " as " & paramType
-        )
-    ) as text
+    // Build the function type dynamically using Type.ForFunction
+    ,ParameterNames = List.Transform(ParametersMeta, each _[Name])
+    ,ParameterTypes = List.Transform(ParametersMeta, each _[Type])
+    ,DynamicFunctionType = Type.ForFunction(
+        [
+            Parameters = ParameterTypes, // List of parameter types
+            RequiredCount = List.Count(ParameterTypes) // All parameters are considered required here
+        ],
+        type text // Return type of the function
+    )
 
     // Define the final function with dynamic parameter definitions
     ,DynamicReportFunction = (paramValues as record) => DynamicFunctionImpl(paramValues)
@@ -83,14 +82,7 @@ let
     // Replace the function type dynamically, adding metadata from the JSON
     ,DynamicReportFunctionWithMeta = Value.ReplaceType(
         DynamicReportFunction
-        ,type function (
-            // Generate parameter types dynamically from JSON metadata
-            List.Transform(ParametersMeta, each [
-                paramName = _[Name]
-                ,paramType = _[Type]
-            ])
-        )
-        as text meta [
+        ,DynamicFunctionType meta [
             Documentation.Name = FunctionMeta[Documentation.Name]
             ,Documentation.LongDescription = FunctionMeta[Documentation.LongDescription]
             ,Documentation.Examples = FunctionMeta[Documentation.Examples]
