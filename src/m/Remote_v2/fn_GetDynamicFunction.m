@@ -68,13 +68,12 @@ let
     // Build the function type dynamically using Type.ForFunction
     ,ParameterNames = List.Transform(ParametersMeta, each _[Name])
     ,ParameterTypes = List.Transform(ParametersMeta, each _[Type])
-    ,DynamicFunctionType = Type.ForFunction(
-        [
-            Parameters = ParameterTypes, // List of parameter types
-            RequiredCount = List.Count(ParameterTypes) // All parameters are considered required here
-        ],
-        type text // Return type of the function
-    )
+
+    // Ensuring the parameter names and types are zipped together as a record
+    ,ParameterSignature = Record.FromList(ParameterTypes, ParameterNames)
+
+    // Ensure RequiredCount is calculated as the count of parameters
+    ,DynamicFunctionType = Type.ForFunction(ParameterSignature, type text) // type text as return type
 
     // Define the final function with dynamic parameter definitions
     ,DynamicReportFunction = (paramValues as record) => DynamicFunctionImpl(paramValues)
