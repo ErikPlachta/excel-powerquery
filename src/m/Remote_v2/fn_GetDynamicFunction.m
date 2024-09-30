@@ -2,7 +2,7 @@ let
     // Fetch the remote JSON file (replace with actual URL)
     Source = Json.Document(Web.Contents("https://your-json-url-here.com")),
 
-    // Extract the parameters list and function metadata from the validated JSON
+    // Extract the parameters list and function metadata from the JSON
     ParametersList = Source[Parameters],
     FunctionMeta = Source[FunctionMetadata],
 
@@ -16,7 +16,7 @@ let
         else if paramType = "text" then type text
         else error "Unsupported parameter type",
 
-    // Helper function to generate parameter meta dynamically from JSON with error handling
+    // Helper function to generate parameter meta dynamically from JSON
     GenerateParameterMeta = (param as record) =>
         let
             Title = param[Title],
@@ -43,7 +43,7 @@ let
     // Generate parameter meta list from the validated JSON
     ParametersMeta = List.Transform(ParametersList, each GenerateParameterMeta(_)),
 
-    // Function implementation - just concatenate parameter values for now
+    // Function implementation - concatenate parameter values for demonstration
     DynamicFunctionImpl = (paramValues as record) as text =>
     let
         ConcatenatedParams = List.Accumulate(ParametersMeta, "", (state, paramMeta) =>
@@ -57,10 +57,24 @@ let
     in
         ConcatenatedParams,
 
-    // Construct the dynamic function type by generating the signature
+    // Construct the dynamic function type manually
     DynamicFunctionType = type function (
-        // Dynamically create the parameter list using Text.Combine
-        List.Transform(ParametersMeta, each _[Name] & " as " & Text.From(Value.Type(_[Type])))
+        Report as (type text meta [
+            Documentation.FieldCaption = "Report Selection",
+            Documentation.FieldDescription = "Select the report to generate."
+        ]),
+        AsOfDate as (type logical meta [
+            Documentation.FieldCaption = "As of Date Usage",
+            Documentation.FieldDescription = "Whether to use an 'As of Date' in the report."
+        ]),
+        StartDate as (type date meta [
+            Documentation.FieldCaption = "Report Start Date",
+            Documentation.FieldDescription = "Select the start date for the report."
+        ]),
+        Threshold as (type number meta [
+            Documentation.FieldCaption = "Filter Threshold",
+            Documentation.FieldDescription = "Set a threshold value to filter the report data."
+        ])
     ) as text,
 
     // Define the final function with dynamic parameter definitions
@@ -70,16 +84,7 @@ let
     // Replace the function type dynamically, adding metadata from the JSON
     DynamicReportFunctionWithMeta = Value.ReplaceType(
         DynamicReportFunction,
-        type function (
-            // Generate parameter list
-            List.Transform(ParametersMeta, (paramMeta) =>
-                let
-                    paramName = paramMeta[Name],
-                    paramType = paramMeta[Type]
-                in
-                    paramName as paramType
-            )
-        ) as text meta [
+        DynamicFunctionType meta [
             Documentation.Name = FunctionMeta[Documentation.Name],
             Documentation.LongDescription = FunctionMeta[Documentation.LongDescription],
             Documentation.Examples = FunctionMeta[Documentation.Examples]
