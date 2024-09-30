@@ -66,14 +66,17 @@ let
             ConcatenatedParams,
 
     // Build the function type dynamically using Type.ForFunction
+    // Create a record of parameter names and types
     ParameterNames = List.Transform(ParametersMeta, each _[Name]),
     ParameterTypes = List.Transform(ParametersMeta, each _[Type]),
 
-    // Ensuring the parameter names and types are zipped together as a record
+    // Ensure that ParameterSignature is a record
     ParameterSignature = Record.FromList(ParameterTypes, ParameterNames),
 
     // Create the function type dynamically with the return type (text)
-    DynamicFunctionType = Type.ForFunction(ParameterSignature, type text),  // Return type is "text"
+    DynamicFunctionType = type function (
+        List.Transform(ParametersMeta, (paramMeta) => paramMeta[Name] as paramMeta[Type])
+    ) as text,
 
     // Define the final function with dynamic parameter definitions
     DynamicReportFunction = (paramValues as record) => DynamicFunctionImpl(paramValues),
