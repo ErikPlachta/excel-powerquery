@@ -1,2 +1,3 @@
-# Excel-powerquery
-PowerQuery reference. 
+# Excel-PowerQuery
+
+PowerQuery research reference. 
