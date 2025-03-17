@@ -1,3 +1,3 @@
 # Excel-PowerQuery
 
-PowerQuery research reference. 
+Reference for research done in Excel using PowerQuery and VBS together.
